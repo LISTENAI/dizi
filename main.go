@@ -1,3 +1,6 @@
+// Package main implements a configurable MCP (Model Context Protocol) server.
+// The server supports both stdio and SSE transports and can be configured
+// via YAML files to provide various tools including builtin, command, and script types.
 package main
 
 import (
@@ -9,7 +12,11 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// main is the entry point of the MCP server application.
+// It parses command line arguments, loads configuration, registers tools,
+// and starts the server with the specified transport method.
 func main() {
+	// Parse command line flags
 	var (
 		transport = flag.String("transport", "sse", "Transport method: stdio or sse")
 		host      = flag.String("host", "localhost", "Host for SSE transport")

@@ -1,3 +1,5 @@
+// Package main provides configuration management for the MCP server.
+// This file handles loading and parsing YAML configuration files.
 package main
 
 import (
