@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            goos: linux
+            goarch: amd64
+          - os: linux
+            arch: arm64
+            goos: linux
+            goarch: arm64
+          - os: darwin
+            arch: amd64
+            goos: darwin
+            goarch: amd64
+          - os: darwin
+            arch: arm64
+            goos: darwin
+            goarch: arm64
+          - os: windows
+            arch: amd64
+            goos: windows
+            goarch: amd64
+            ext: .exe
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Get dependencies
+      run: go mod download
+
+    - name: Run tests
+      run: go test ./...
+
+    - name: Build binary
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 0
+      run: |
+        BINARY_NAME="dizi-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
+        go build -ldflags="-s -w -X main.version=${GITHUB_REF#refs/tags/}" -o "$BINARY_NAME" ./cmd/dizi
+        echo "BINARY_NAME=$BINARY_NAME" >> $GITHUB_ENV
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ env.BINARY_NAME }}
+        path: ${{ env.BINARY_NAME }}
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: ./artifacts
+
+    - name: Move artifacts to release directory
+      run: |
+        mkdir -p release
+        find artifacts -type f -exec mv {} release/ \;
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: release/*
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
+        body: |
+          ## Dizi ${{ github.ref_name }}
+          
+          ### 下载安装
+          
+          **Linux (x86_64):**
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/dizi-linux-amd64
+          chmod +x dizi-linux-amd64
+          sudo mv dizi-linux-amd64 /usr/local/bin/dizi
+          ```
+          
+          **Linux (ARM64):**
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/dizi-linux-arm64
+          chmod +x dizi-linux-arm64
+          sudo mv dizi-linux-arm64 /usr/local/bin/dizi
+          ```
+          
+          **macOS (Intel):**
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/dizi-darwin-amd64
+          chmod +x dizi-darwin-amd64
+          sudo mv dizi-darwin-amd64 /usr/local/bin/dizi
+          ```
+          
+          **macOS (Apple Silicon):**
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/dizi-darwin-arm64
+          chmod +x dizi-darwin-arm64
+          sudo mv dizi-darwin-arm64 /usr/local/bin/dizi
+          ```
+          
+          **Windows:**
+          下载 `dizi-windows-amd64.exe` 并将其添加到系统 PATH。
+
+          ### 使用方法
+          
+          1. 初始化配置：`dizi init`
+          2. 编辑 `dizi.yml` 配置文件
+          3. 启动服务器：`dizi`
+          
+          更多详细说明请参考 [README.md](https://github.com/${{ github.repository }}/blob/main/README.md)
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
