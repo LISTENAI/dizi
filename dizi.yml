@@ -9,7 +9,7 @@ tools:
   - name: "echo"
     description: "Echo back the input message"
     type: "builtin"
-    schema:
+    parameters:
       type: "object"
       properties:
         message:
@@ -20,8 +20,8 @@ tools:
   - name: "zephyr_build"
     description: "编译当前 Zephyr 项目"
     type: "script"
-    script: "source .venv/bin/activate && west build -p -s {{source_dir}} -b {{board}}"
-    schema:
+    script: echo "source .venv/bin/activate && west build -p -s {{source_dir}} -b {{board}}"
+    parameters:
       type: "object"
       properties:
         board:
@@ -42,7 +42,7 @@ tools:
     type: "command"
     command: "ls"
     args: ["-la", "{{path}}"]
-    schema:
+    parameters:
       type: "object"
       properties:
         path:

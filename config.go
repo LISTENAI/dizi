@@ -30,7 +30,7 @@ type ToolConfig struct {
 	Command     string                 `yaml:"command,omitempty"`
 	Script      string                 `yaml:"script,omitempty"`
 	Args        []string               `yaml:"args,omitempty"`
-	Schema      map[string]interface{} `yaml:"schema,omitempty"`
+	Parameters  map[string]interface{} `yaml:"parameters,omitempty"`
 }
 
 // LoadConfig loads configuration from dizi.yml in the current directory
@@ -83,7 +83,7 @@ func getDefaultConfig() *Config {
 				Name:        "echo",
 				Description: "Echo back the input message",
 				Type:        "builtin",
-				Schema: map[string]interface{}{
+				Parameters: map[string]interface{}{
 					"type": "object",
 					"properties": map[string]interface{}{
 						"message": map[string]interface{}{

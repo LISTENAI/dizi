@@ -11,12 +11,12 @@ import (
 
 func main() {
 	var (
-		transport = flag.String("transport", "stdio", "Transport method: stdio or sse")
+		transport = flag.String("transport", "sse", "Transport method: stdio or sse")
 		host      = flag.String("host", "localhost", "Host for SSE transport")
 		portFlag  = flag.Int("port", 0, "Port for SSE transport (overrides config)")
 		help      = flag.Bool("help", false, "Show help information")
 	)
-	
+
 	flag.Parse()
 
 	// Load configuration
@@ -44,15 +44,18 @@ func main() {
 		log.Fatalf("Failed to register tools: %v", err)
 	}
 
+	// Setup logging based on transport mode
+	setupLogger(*transport)
+
 	// Start server based on transport
 	switch *transport {
 	case "stdio":
-		log.Printf("Starting %s v%s - %s with stdio transport...", config.Name, config.Version, config.Description)
+		// Silent start for stdio mode
 		if err := server.ServeStdio(mcpServer); err != nil {
 			log.Fatalf("Failed to start stdio server: %v", err)
 		}
 	case "sse":
-		log.Printf("Starting %s v%s - %s with SSE transport on %s:%d...", config.Name, config.Version, config.Description, *host, port)
+		infoLog("Starting %s v%s - %s with SSE transport on http://%s:%d/sse", config.Name, config.Version, config.Description, *host, port)
 		// Create SSE server
 		sseServer := server.NewSSEServer(mcpServer)
 		if err := sseServer.Start(fmt.Sprintf("%s:%d", *host, port)); err != nil {
@@ -73,7 +76,7 @@ func showHelp(config *Config) {
 	fmt.Println("")
 	fmt.Println("Flags:")
 	fmt.Println("  -transport string")
-	fmt.Println("        Transport method: stdio or sse (default \"stdio\")")
+	fmt.Println("        Transport method: stdio or sse (default \"sse\")")
 	fmt.Println("  -host string")
 	fmt.Println("        Host for SSE transport (default \"localhost\")")
 	fmt.Println("  -port int")
@@ -82,8 +85,8 @@ func showHelp(config *Config) {
 	fmt.Println("        Show this help information")
 	fmt.Println("")
 	fmt.Println("Examples:")
-	fmt.Println("  dizi                           # Start with stdio transport")
-	fmt.Println("  dizi -transport=sse            # Start with SSE transport on localhost:8080")
-	fmt.Println("  dizi -transport=sse -port=9000 # Start with SSE transport on localhost:9000")
+	fmt.Println("  dizi                           # Start with SSE transport (default)")
+	fmt.Println("  dizi -port=9000                # Start with SSE transport on port 9000")
+	fmt.Println("  dizi -transport=stdio          # Start with stdio transport")
 	fmt.Println("  dizi -help                     # Show this help")
 }

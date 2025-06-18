@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -38,10 +39,18 @@ func registerTool(mcpServer *server.MCPServer, toolConfig ToolConfig) error {
 func registerBuiltinTool(mcpServer *server.MCPServer, toolConfig ToolConfig) error {
 	switch toolConfig.Name {
 	case "echo":
-		tool := mcp.NewTool("echo",
-			mcp.WithDescription(toolConfig.Description),
-			mcp.WithString("message", mcp.Required(), mcp.Description("Message to echo back")),
-		)
+		var tool mcp.Tool
+		if toolConfig.Parameters != nil {
+			// Use raw schema for builtin tools with parameters
+			schemaBytes, err := json.Marshal(toolConfig.Parameters)
+			if err != nil {
+				return fmt.Errorf("failed to marshal tool parameters: %w", err)
+			}
+			tool = mcp.NewToolWithRawSchema(toolConfig.Name, toolConfig.Description, json.RawMessage(schemaBytes))
+		} else {
+			// Fallback to basic tool
+			tool = mcp.NewTool(toolConfig.Name, mcp.WithDescription(toolConfig.Description))
+		}
 		
 		mcpServer.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			arguments, ok := request.Params.Arguments.(map[string]interface{})
@@ -69,53 +78,14 @@ func registerCommandTool(mcpServer *server.MCPServer, toolConfig ToolConfig) err
 		return fmt.Errorf("command is required for command-type tool")
 	}
 	
-	// Create tool with dynamic schema if provided, otherwise create basic tool
+	// Create tool with inputSchema using raw JSON
 	var tool mcp.Tool
-	if toolConfig.Schema != nil {
-		// Build tool options from schema
-		toolOptions := []mcp.ToolOption{mcp.WithDescription(toolConfig.Description)}
-		
-		// Parse schema properties for parameters
-		if schemaMap, ok := toolConfig.Schema["properties"].(map[string]interface{}); ok {
-			required := make(map[string]bool)
-			if reqArray, ok := toolConfig.Schema["required"].([]interface{}); ok {
-				for _, req := range reqArray {
-					if reqStr, ok := req.(string); ok {
-						required[reqStr] = true
-					}
-				}
-			}
-			
-			for propName, propDef := range schemaMap {
-				if propMap, ok := propDef.(map[string]interface{}); ok {
-					if propType, ok := propMap["type"].(string); ok {
-						desc := ""
-						if d, ok := propMap["description"].(string); ok {
-							desc = d
-						}
-						
-						var opts []mcp.PropertyOption
-						if required[propName] {
-							opts = append(opts, mcp.Required())
-						}
-						if desc != "" {
-							opts = append(opts, mcp.Description(desc))
-						}
-						
-						switch propType {
-						case "string":
-							toolOptions = append(toolOptions, mcp.WithString(propName, opts...))
-						case "number", "integer":
-							toolOptions = append(toolOptions, mcp.WithNumber(propName, opts...))
-						case "boolean":
-							toolOptions = append(toolOptions, mcp.WithBoolean(propName, opts...))
-						}
-					}
-				}
-			}
+	if toolConfig.Parameters != nil {
+		schemaBytes, err := json.Marshal(toolConfig.Parameters)
+		if err != nil {
+			return fmt.Errorf("failed to marshal tool parameters: %w", err)
 		}
-		
-		tool = mcp.NewTool(toolConfig.Name, toolOptions...)
+		tool = mcp.NewToolWithRawSchema(toolConfig.Name, toolConfig.Description, json.RawMessage(schemaBytes))
 	} else {
 		tool = mcp.NewTool(toolConfig.Name, mcp.WithDescription(toolConfig.Description))
 	}
@@ -133,7 +103,17 @@ func registerScriptTool(mcpServer *server.MCPServer, toolConfig ToolConfig) erro
 		return fmt.Errorf("script is required for script-type tool")
 	}
 	
-	tool := mcp.NewTool(toolConfig.Name, mcp.WithDescription(toolConfig.Description))
+	// Create tool with inputSchema if parameters exist
+	var tool mcp.Tool
+	if toolConfig.Parameters != nil {
+		schemaBytes, err := json.Marshal(toolConfig.Parameters)
+		if err != nil {
+			return fmt.Errorf("failed to marshal tool parameters: %w", err)
+		}
+		tool = mcp.NewToolWithRawSchema(toolConfig.Name, toolConfig.Description, json.RawMessage(schemaBytes))
+	} else {
+		tool = mcp.NewTool(toolConfig.Name, mcp.WithDescription(toolConfig.Description))
+	}
 	
 	mcpServer.AddTool(tool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		return executeScript(toolConfig, request)
@@ -161,6 +141,9 @@ func executeCommand(toolConfig ToolConfig, request mcp.CallToolRequest) (*mcp.Ca
 		}
 	}
 	
+	// Debug logging (will be discarded in stdio mode)
+	infoLog("Executing tool name: %s, command: %s with args: %v", toolConfig.Name, toolConfig.Command, args)
+	
 	// Execute command
 	cmd := exec.Command(toolConfig.Command, args...)
 	output, err := cmd.CombinedOutput()
@@ -174,9 +157,22 @@ func executeCommand(toolConfig ToolConfig, request mcp.CallToolRequest) (*mcp.Ca
 
 // executeScript executes a script-based tool
 func executeScript(toolConfig ToolConfig, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	// For now, treat script similar to command
-	// In the future, this could support inline scripts, etc.
-	cmd := exec.Command("sh", "-c", toolConfig.Script)
+	// Replace placeholders in script with actual values from request
+	script := toolConfig.Script
+	if arguments, ok := request.Params.Arguments.(map[string]interface{}); ok {
+		for key, value := range arguments {
+			placeholder := fmt.Sprintf("{{%s}}", key)
+			if valueStr, ok := value.(string); ok {
+				script = strings.ReplaceAll(script, placeholder, valueStr)
+			}
+		}
+	}
+	
+	// Debug logging (will be discarded in stdio mode)
+	infoLog("Executing tool name: %s, script: %s", toolConfig.Name, script)
+	
+	// Execute script
+	cmd := exec.Command("sh", "-c", script)
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
