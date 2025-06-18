@@ -365,7 +365,7 @@ func (fs *FilesystemServer) handleListDirectory(ctx context.Context, request mcp
 		// Get creation time if available
 		timeSpec := times.Get(stat)
 		modTime := timeSpec.ModTime()
-		if timeSpec.ChangeTime() == (time.Time{}) {
+		if timeSpec.ChangeTime().Equal(time.Time{}) {
 			modTime = stat.ModTime()
 		}
 
@@ -670,7 +670,7 @@ func (fs *FilesystemServer) copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer sourceFile.Close()
+	defer func() { _ = sourceFile.Close() }()
 
 	// Create destination directory if it doesn't exist
 	destDir := filepath.Dir(dst)
@@ -682,7 +682,7 @@ func (fs *FilesystemServer) copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
+	defer func() { _ = destFile.Close() }()
 
 	_, err = io.Copy(destFile, sourceFile)
 	if err != nil {

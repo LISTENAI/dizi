@@ -112,8 +112,8 @@ func TestLoadConfigWithPartialValues(t *testing.T) {
 	originalWd, _ := os.Getwd()
 	
 	// Change to temp directory
-	os.Chdir(tempDir)
-	defer os.Chdir(originalWd)
+	_ = os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
 	
 	// Create a config file with only some values
 	configContent := `name: "partial-server"
@@ -156,8 +156,8 @@ func TestLoadConfigInvalidYAML(t *testing.T) {
 	originalWd, _ := os.Getwd()
 	
 	// Change to temp directory
-	os.Chdir(tempDir)
-	defer os.Chdir(originalWd)
+	_ = os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
 	
 	// Create an invalid YAML file
 	invalidYAML := `name: "test
@@ -181,8 +181,8 @@ func TestLoadConfigFileReadError(t *testing.T) {
 	originalWd, _ := os.Getwd()
 	
 	// Change to temp directory
-	os.Chdir(tempDir)
-	defer os.Chdir(originalWd)
+	_ = os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
 	
 	// Create a directory with the config filename (should cause read error)
 	err := os.Mkdir("dizi.yml", 0755)
