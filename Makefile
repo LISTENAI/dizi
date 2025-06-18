@@ -2,6 +2,7 @@
 
 # 变量定义
 APP_NAME = dizi
+CMD_PATH = ./cmd/dizi
 VERSION = $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
 BUILD_TIME = $(shell date +%Y-%m-%d_%H:%M:%S)
 GO_VERSION = $(shell go version | cut -d' ' -f3)
@@ -17,14 +18,14 @@ all: clean build
 .PHONY: build
 build:
 	@echo "Building $(APP_NAME)..."
-	go build $(LDFLAGS) -o $(APP_NAME)
+	go build $(LDFLAGS) -o $(APP_NAME) $(CMD_PATH)
 	@echo "Build complete: $(APP_NAME)"
 
 # 开发构建（包含调试信息）
 .PHONY: build-dev
 build-dev:
 	@echo "Building $(APP_NAME) (development)..."
-	go build -o $(APP_NAME)
+	go build -o $(APP_NAME) $(CMD_PATH)
 	@echo "Development build complete: $(APP_NAME)"
 
 # 跨平台构建
@@ -34,19 +35,19 @@ build-all: clean
 	@mkdir -p dist
 	
 	# Linux amd64
-	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o dist/$(APP_NAME)-linux-amd64
+	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o dist/$(APP_NAME)-linux-amd64 $(CMD_PATH)
 	
 	# Linux arm64
-	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o dist/$(APP_NAME)-linux-arm64
+	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o dist/$(APP_NAME)-linux-arm64 $(CMD_PATH)
 	
 	# macOS amd64
-	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o dist/$(APP_NAME)-darwin-amd64
+	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o dist/$(APP_NAME)-darwin-amd64 $(CMD_PATH)
 	
 	# macOS arm64
-	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o dist/$(APP_NAME)-darwin-arm64
+	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o dist/$(APP_NAME)-darwin-arm64 $(CMD_PATH)
 	
 	# Windows amd64
-	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o dist/$(APP_NAME)-windows-amd64.exe
+	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o dist/$(APP_NAME)-windows-amd64.exe $(CMD_PATH)
 	
 	@echo "Cross-platform build complete. Files in dist/"
 
@@ -86,7 +87,7 @@ clean:
 .PHONY: install
 install:
 	@echo "Installing $(APP_NAME)..."
-	go install $(LDFLAGS)
+	go install $(LDFLAGS) $(CMD_PATH)
 
 # 运行
 .PHONY: run
@@ -96,7 +97,7 @@ run: build
 # 运行开发模式
 .PHONY: run-dev
 run-dev:
-	go run . -port=8082
+	go run $(CMD_PATH) -port=8082
 
 # 检查配置文件
 .PHONY: check-config

@@ -1,6 +1,6 @@
-// Package main provides configuration management for the MCP server.
+// Package config provides configuration management for the MCP server.
 // This file handles loading and parsing YAML configuration files.
-package main
+package config
 
 import (
 	"fmt"
@@ -12,9 +12,9 @@ import (
 
 // Config represents the dizi.yml configuration structure
 type Config struct {
-	Name        string      `yaml:"name"`
-	Version     string      `yaml:"version"`
-	Description string      `yaml:"description"`
+	Name        string       `yaml:"name"`
+	Version     string       `yaml:"version"`
+	Description string       `yaml:"description"`
 	Server      ServerConfig `yaml:"server"`
 	Tools       []ToolConfig `yaml:"tools"`
 }
@@ -35,25 +35,25 @@ type ToolConfig struct {
 	Parameters  map[string]interface{} `yaml:"parameters,omitempty"`
 }
 
-// LoadConfig loads configuration from dizi.yml in the current directory
-func LoadConfig() (*Config, error) {
+// Load loads configuration from dizi.yml in the current directory
+func Load() (*Config, error) {
 	configPath := filepath.Join(".", "dizi.yml")
-	
+
 	// Check if config file exists
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return getDefaultConfig(), nil
 	}
-	
+
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
-	
+
 	var config Config
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
-	
+
 	// Set defaults if not specified
 	if config.Name == "" {
 		config.Name = "dizi"
@@ -67,7 +67,7 @@ func LoadConfig() (*Config, error) {
 	if config.Server.Port == 0 {
 		config.Server.Port = 8080
 	}
-	
+
 	return &config, nil
 }
 
