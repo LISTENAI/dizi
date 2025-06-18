@@ -1,33 +1,56 @@
-name: dizi-mcp-server
-version: 1.0.0
-description: 笛子项目的MCP服务定义
-author: MJ
-license: MIT
-port: 8081
+name: "dizi-mcp-server"
+version: "1.0.0"
+description: "笛子项目的MCP服务定义"
+
+server:
+  port: 8081
 
 tools:
-  - name: echo
-    description: Echo back the input
-    input:
-      type: object
+  - name: "echo"
+    description: "Echo back the input message"
+    type: "builtin"
+    schema:
+      type: "object"
       properties:
         message:
-          type: string
-          description: The message to echo back
-    command: echo {message}
+          type: "string"
+          description: "Message to echo back"
+      required: ["message"]
 
-  - zephyr_build:
-    description: 编译当前 Zephyr 项目
-    args:
-      - name: board
-        description: 需要构建的 board identifier，如果不能从对话历史中确定，则询问用户
-        type: string
-        required: true
-      - name: source_dir
-        description: 项目源码目录，如未指定则使用当前目录
-        type: string
-    command: echo "source .venv/bin/activate && west build -p -s {source_dir} -b {board}"
+  - name: "zephyr_build"
+    description: "编译当前 Zephyr 项目"
+    type: "script"
+    script: "source .venv/bin/activate && west build -p -s {{source_dir}} -b {{board}}"
+    schema:
+      type: "object"
+      properties:
+        board:
+          type: "string"
+          description: "需要构建的 board identifier"
+        source_dir:
+          type: "string"
+          description: "项目源码目录，如未指定则使用当前目录"
+      required: ["board"]
 
-  - zephyr_flash:
-    description: 将编译好的固件烧录到设备
-    command: echo "source .venv/bin/activate && west flash"
+  - name: "zephyr_flash"
+    description: "将编译好的固件烧录到设备"
+    type: "script"
+    script: "source .venv/bin/activate && west flash"
+
+  - name: "list_files"
+    description: "List files in a directory"
+    type: "command"
+    command: "ls"
+    args: ["-la", "{{path}}"]
+    schema:
+      type: "object"
+      properties:
+        path:
+          type: "string"
+          description: "Directory path to list files from"
+      required: ["path"]
+
+  - name: "current_time"
+    description: "Get current date and time"
+    type: "script"
+    script: "date '+%Y-%m-%d %H:%M:%S'"
