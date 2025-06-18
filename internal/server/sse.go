@@ -96,7 +96,7 @@ func StartCustomSSEServer(cfg *config.Config, host string, port int, enableFsToo
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{
+		_, _ = w.Write([]byte(`{
 			"name": "` + cfg.Name + `",
 			"version": "` + cfg.Version + `",
 			"description": "` + cfg.Description + `",

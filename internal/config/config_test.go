@@ -11,8 +11,8 @@ func TestLoadDefaultConfig(t *testing.T) {
 	originalWd, _ := os.Getwd()
 	
 	// Change to temp directory where no dizi.yml exists
-	os.Chdir(tempDir)
-	defer os.Chdir(originalWd)
+	_ = os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
 	
 	config, err := Load()
 	if err != nil {
@@ -48,8 +48,8 @@ func TestLoadConfigFromFile(t *testing.T) {
 	originalWd, _ := os.Getwd()
 	
 	// Change to temp directory
-	os.Chdir(tempDir)
-	defer os.Chdir(originalWd)
+	_ = os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
 	
 	// Create a test config file
 	configContent := `name: "test-server"

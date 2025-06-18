@@ -34,6 +34,7 @@ func TestNewFilesystemServer(t *testing.T) {
 			
 			if fs == nil {
 				t.Error("Expected FilesystemServer, got nil")
+				return
 			}
 			
 			if fs.config == nil {
@@ -335,8 +336,8 @@ func TestHandleListDirectory(t *testing.T) {
 	testFile := filepath.Join(tempDir, "test.txt")
 	testDir := filepath.Join(tempDir, "testdir")
 	
-	os.WriteFile(testFile, []byte("test"), 0644)
-	os.Mkdir(testDir, 0755)
+	_ = os.WriteFile(testFile, []byte("test"), 0644)
+	_ = os.Mkdir(testDir, 0755)
 	
 	fs := NewFilesystemServer(&FilesystemConfig{
 		RootDirectory: tempDir,
@@ -433,12 +434,12 @@ func TestCopyFileOrDir(t *testing.T) {
 	// Create test file
 	testFile := filepath.Join(tempDir, "source.txt")
 	testContent := "test content"
-	os.WriteFile(testFile, []byte(testContent), 0644)
+	_ = os.WriteFile(testFile, []byte(testContent), 0644)
 	
 	// Create test directory with content
 	testDir := filepath.Join(tempDir, "sourcedir")
-	os.Mkdir(testDir, 0755)
-	os.WriteFile(filepath.Join(testDir, "file.txt"), []byte("dir content"), 0644)
+	_ = os.Mkdir(testDir, 0755)
+	_ = os.WriteFile(filepath.Join(testDir, "file.txt"), []byte("dir content"), 0644)
 	
 	fs := NewFilesystemServer(&FilesystemConfig{
 		RootDirectory: tempDir,
