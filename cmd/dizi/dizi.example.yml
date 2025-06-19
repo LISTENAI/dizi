@@ -15,6 +15,19 @@ server:
 
 # tools 工具定义，遵循  tool use 规范，可以自信搜索 LLM tool use 或者 function call 规范
 tools:
+  # shell eval
+  - name: "shell_eval"
+    description: "可执行标准的bash命令，当前PATH还存在git，curl，ruby等工具可以使用"
+    type: "script"
+    script: "{{command}}"
+    parameters:
+      type: "object"
+      properties:
+        command:
+          type: "string"
+          description: "要执行的 shell 命令"
+      required: ["command"]
+
   # 脚本工具示例
   - name: "current_time"
     description: "Get current date and time"
