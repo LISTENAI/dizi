@@ -38,10 +38,19 @@ func main() {
 		portFlag      = flag.Int("port", 0, "Port for SSE transport (overrides config)")
 		enableFsTools = flag.Bool("fs-tools", false, "Enable filesystem tools")
 		fsRootDir     = flag.String("fs-root", "", "Root directory for filesystem tools")
+		workDir       = flag.String("workdir", "", "Working directory for the server")
 		help          = flag.Bool("help", false, "Show help information")
 	)
 
 	flag.Parse()
+
+	// Change working directory if specified
+	if *workDir != "" {
+		if err := os.Chdir(*workDir); err != nil {
+			log.Fatalf("Failed to change working directory to %s: %v", *workDir, err)
+		}
+		logger.InfoLog("Changed working directory to: %s", *workDir)
+	}
 
 	// Load configuration
 	cfg, err := config.Load()
@@ -137,6 +146,8 @@ func showHelp(cfg *config.Config) {
 	fmt.Println("        Enable filesystem tools (restricted to project directory)")
 	fmt.Println("  -fs-root string")
 	fmt.Println("        Root directory for filesystem tools (default: project directory)")
+	fmt.Println("  -workdir string")
+	fmt.Println("        Working directory for the server")
 	fmt.Println("  -help")
 	fmt.Println("        Show this help information")
 	fmt.Println("")
@@ -144,6 +155,7 @@ func showHelp(cfg *config.Config) {
 	fmt.Println("  dizi                           # Start with SSE transport (default)")
 	fmt.Println("  dizi -port=9000                # Start with SSE transport on port 9000")
 	fmt.Println("  dizi -transport=stdio          # Start with stdio transport")
+	fmt.Println("  dizi -transport=stdio -workdir=/path/to/project  # Start stdio in specific directory")
 	fmt.Println("  dizi -fs-tools                 # Enable filesystem tools (project only)")
 	fmt.Println("  dizi -fs-tools -fs-root=/home  # Enable filesystem tools with custom root")
 	fmt.Println("")

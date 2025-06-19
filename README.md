@@ -104,6 +104,9 @@ dizi
 # 使用 stdio 传输启动
 dizi -transport=stdio
 
+# 指定工作目录（适用于 stdio 模式）
+dizi -transport=stdio -workdir=/path/to/project
+
 # 启用文件系统工具
 dizi -fs-tools
 
@@ -123,7 +126,7 @@ Dizi 内置了完整的文件系统操作工具集，提供安全的文件访问
    dizi -fs-tools -fs-root=/path     # 指定其他根目录
    ```
 
-2. **SSE 查询参数**（适用于 Claude Desktop 等客户端）：
+2. **SSE 查询参数**（适用于 Claude code 等客户端）：
    ```
    http://localhost:8081/sse?include_fs_tools=true              # 启用（仅限项目目录）
    http://localhost:8081/sse?include_fs_tools=true&fs_root=/path # 指定其他根目录
@@ -236,6 +239,7 @@ script: "echo 'Hello, {{name}}!'"
 | `-port` | int | SSE 服务器端口 | 配置文件值 |
 | `-fs-tools` | bool | 启用文件系统工具 | false |
 | `-fs-root` | string | 文件系统工具根目录 | "." |
+| `-workdir` | string | 服务器工作目录 | 当前目录 |
 | `-help` | bool | 显示帮助信息 | false |
 
 ## 使用示例
@@ -250,6 +254,20 @@ script: "echo 'Hello, {{name}}!'"
     "dizi": {
       "command": "dizi",
       "args": ["-transport=stdio", "-fs-tools"],
+      "env": {}
+    }
+  }
+}
+```
+
+**指定工作目录**（适用于 Claude Desktop 无法 cd 到特定目录的情况）：
+
+```json
+{
+  "mcpServers": {
+    "my-project": {
+      "command": "dizi",
+      "args": ["-transport=stdio", "-workdir=/path/to/your/project", "-fs-tools"],
       "env": {}
     }
   }
