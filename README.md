@@ -246,20 +246,6 @@ script: "echo 'Hello, {{name}}!'"
 
 ### 与 Claude Desktop 集成
 
-在 Claude Desktop 的配置中添加：
-
-```json
-{
-  "mcpServers": {
-    "dizi": {
-      "command": "dizi",
-      "args": ["-transport=stdio", "-fs-tools"],
-      "env": {}
-    }
-  }
-}
-```
-
 **指定工作目录**（适用于 Claude Desktop 无法 cd 到特定目录的情况）：
 
 ```json
@@ -273,6 +259,8 @@ script: "echo 'Hello, {{name}}!'"
   }
 }
 ```
+
+注意：command如果放在自己指定的PATH路径，要不再env设置PATH地址，要不写全路径（建议）
 
 ### 开发环境工具配置
 
