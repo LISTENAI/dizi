@@ -66,3 +66,59 @@ tools:
     description: "将编译好的固件烧录到设备"
     type: "script"
     script: "source .venv/bin/activate && west flash"
+
+  # Lua eval 内置工具
+  - name: "lua_eval"
+    description: "在当前目录执行 Lua 代码片段，可用于快速测试和计算"
+    type: "builtin"
+    parameters:
+      type: "object"
+      properties:
+        code:
+          type: "string"
+          description: "要执行的 Lua 代码"
+      required: ["code"]
+
+  # Lua 脚本工具示例
+  - name: "hello_tool"
+    description: "问候和基础数学计算工具"
+    type: "lua"
+    script: "dizi_bin/hello.lua"
+    parameters:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+          description: "要问候的名称"
+        operation:
+          type: "string"
+          description: "数学操作 (add, multiply, subtract, divide)"
+        a:
+          type: "number"
+          description: "第一个数字"
+        b:
+          type: "number"
+          description: "第二个数字"
+
+  - name: "system_info"
+    description: "获取系统信息"
+    type: "lua"
+    script: "dizi_bin/system_info.lua"
+
+  - name: "file_utils"
+    description: "文件操作工具"
+    type: "lua"
+    script: "dizi_bin/file_utils.lua"
+    parameters:
+      type: "object"
+      properties:
+        action:
+          type: "string"
+          description: "操作类型 (read, write, info)"
+        filename:
+          type: "string"
+          description: "文件路径"
+        content:
+          type: "string"
+          description: "写入的内容 (仅在 write 操作时需要)"
+      required: ["action", "filename"]

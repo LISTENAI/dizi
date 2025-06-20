@@ -1,26 +1,56 @@
-name: "dizi-mcp-server"
+# Dizi MCP Server Configuration Example
+# 复制此文件为 dizi.yml 并根据需要修改
+
+name: "my-mcp-server"
 version: "1.0.0"
-description: "笛子项目的MCP服务定义"
+description: "My Custom MCP Server"
 
 server:
   port: 8081
 
+# 文件系统工具通过命令行启用：
+# - 使用 -fs-tools 启用文件系统工具（仅限项目目录）
+# - 使用 -fs-tools -fs-root=/path 指定其他根目录
+# - SSE 模式下可通过查询参数 ?include_fs_tools=true 启用
+
+# tools 工具定义，遵循  tool use 规范，可以自信搜索 LLM tool use 或者 function call 规范
 tools:
-  - name: "echo"
-    description: "Echo back the input message"
-    type: "builtin"
+  # shell eval
+  - name: "shell_eval"
+    description: "可执行标准的bash命令，当前PATH还存在git，curl，ruby等工具可以使用"
+    type: "script"
+    script: "{{command}}"
     parameters:
       type: "object"
       properties:
-        message:
+        command:
           type: "string"
-          description: "Message to echo back"
-      required: ["message"]
+          description: "要执行的 shell 命令"
+      required: ["command"]
 
+  # 脚本工具示例
+  - name: "current_time"
+    description: "Get current date and time"
+    type: "script"
+    script: "date '+%Y-%m-%d %H:%M:%S'"
+
+  - name: "git_status"
+    description: "Show git repository status"
+    type: "script"
+    script: "cd {{path}} && git status --porcelain"
+    parameters:
+      type: "object"
+      properties:
+        path:
+          type: "string"
+          description: "Git repository path"
+      required: ["path"]
+
+  # Zephyr 开发工具示例
   - name: "zephyr_build"
     description: "编译当前 Zephyr 项目"
     type: "script"
-    script: echo "source .venv/bin/activate && west build -p -s {{source_dir}} -b {{board}}"
+    script: "source .venv/bin/activate && west build -p -s {{source_dir}} -b {{board}}"
     parameters:
       type: "object"
       properties:
@@ -37,20 +67,58 @@ tools:
     type: "script"
     script: "source .venv/bin/activate && west flash"
 
-  - name: "list_files"
-    description: "List files in a directory"
-    type: "command"
-    command: "ls"
-    args: ["-la", "{{path}}"]
+  # Lua eval 内置工具
+  - name: "lua_eval"
+    description: "在当前目录执行 Lua 代码片段，可用于快速测试和计算"
+    type: "builtin"
     parameters:
       type: "object"
       properties:
-        path:
+        code:
           type: "string"
-          description: "Directory path to list files from"
-      required: ["path"]
+          description: "要执行的 Lua 代码"
+      required: ["code"]
 
-  - name: "current_time"
-    description: "Get current date and time"
-    type: "script"
-    script: "date '+%Y-%m-%d %H:%M:%S'"
+  # Lua 脚本工具示例
+  - name: "hello_tool"
+    description: "问候和基础数学计算工具"
+    type: "lua"
+    script: "dizi_bin/hello.lua"
+    parameters:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+          description: "要问候的名称"
+        operation:
+          type: "string"
+          description: "数学操作 (add, multiply, subtract, divide)"
+        a:
+          type: "number"
+          description: "第一个数字"
+        b:
+          type: "number"
+          description: "第二个数字"
+
+  - name: "system_info"
+    description: "获取系统信息"
+    type: "lua"
+    script: "dizi_bin/system_info.lua"
+
+  - name: "file_utils"
+    description: "文件操作工具"
+    type: "lua"
+    script: "dizi_bin/file_utils.lua"
+    parameters:
+      type: "object"
+      properties:
+        action:
+          type: "string"
+          description: "操作类型 (read, write, info)"
+        filename:
+          type: "string"
+          description: "文件路径"
+        content:
+          type: "string"
+          description: "写入的内容 (仅在 write 操作时需要)"
+      required: ["action", "filename"]

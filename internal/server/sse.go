@@ -15,82 +15,69 @@ import (
 
 
 // customSSEHandler wraps the SSE server to handle query parameters
-func customSSEHandler(cfg *config.Config, enableFsTools bool, fsRootDir string) http.HandlerFunc {
+func customSSEHandler(sseServer *server.SSEServer, enableFsTools bool, fsRootDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Parse query parameters
+		// Parse query parameters for filesystem tools (if needed for future enhancement)
 		query := r.URL.Query()
 
-		// Check if filesystem tools should be enabled for this request
-		shouldEnableFsTools := enableFsTools
-		customFsRoot := fsRootDir
-
+		// Log query parameters if filesystem tools are requested
 		if includeFsTools := query.Get("include_fs_tools"); includeFsTools != "" {
-			if enabled, err := strconv.ParseBool(includeFsTools); err == nil {
-				shouldEnableFsTools = enabled
-			}
+			logger.InfoLog("SSE request with include_fs_tools=%s", includeFsTools)
 		}
 
 		if rootDir := query.Get("fs_root"); rootDir != "" {
-			customFsRoot = rootDir
+			logger.InfoLog("SSE request with fs_root=%s", rootDir)
 		}
 
-		// Create a new MCP server for this specific request
-		mcpServer := server.NewMCPServer(cfg.Name, cfg.Version)
-
-		// Register basic tools
-		if err := tools.RegisterTools(mcpServer, cfg.Tools); err != nil {
-			http.Error(w, "Failed to register tools", http.StatusInternalServerError)
-			return
-		}
-
-		// Register filesystem tools if requested
-		if shouldEnableFsTools {
-			fsConfig := &tools.FilesystemConfig{}
-
-			// Use custom root if provided, otherwise default to project directory
-			if customFsRoot != "" {
-				fsConfig.RootDirectory = customFsRoot
-			} else {
-				// Default to current working directory (project directory)
-				pwd, err := os.Getwd()
-				if err != nil {
-					fsConfig.RootDirectory = "."
-				} else {
-					fsConfig.RootDirectory = pwd
-				}
-			}
-
-			if err := tools.RegisterFilesystemTools(mcpServer, fsConfig); err != nil {
-				http.Error(w, "Failed to register filesystem tools", http.StatusInternalServerError)
-				return
-			}
-
-			logger.InfoLog("SSE request with filesystem tools enabled, root: %s", fsConfig.RootDirectory)
-		}
-
-		// Create SSE server for this request
-		sseServer := server.NewSSEServer(mcpServer)
-
-		// Handle the SSE connection
+		// Handle the SSE connection with the shared server instance
 		sseServer.ServeHTTP(w, r)
 	}
 }
 
 // StartCustomSSEServer starts the SSE server with custom handling
 func StartCustomSSEServer(cfg *config.Config, host string, port int, enableFsTools bool, fsRootDir string) error {
-	mux := http.NewServeMux()
+	// Create a single MCP server instance to be shared
+	mcpServer := server.NewMCPServer(cfg.Name, cfg.Version)
 
-	// Handle SSE endpoint with query parameter support
-	mux.HandleFunc("/sse", customSSEHandler(cfg, enableFsTools, fsRootDir))
-
-	// Handle message endpoint - we need to create a basic server for this
-	basicMcpServer := server.NewMCPServer(cfg.Name, cfg.Version)
-	if err := tools.RegisterTools(basicMcpServer, cfg.Tools); err != nil {
+	// Register basic tools
+	if err := tools.RegisterTools(mcpServer, cfg.Tools); err != nil {
 		return err
 	}
 
-	basicSSEServer := server.NewSSEServer(basicMcpServer)
-	mux.Handle("/message", basicSSEServer.MessageHandler())
+	// Register filesystem tools if enabled
+	if enableFsTools {
+		fsConfig := &tools.FilesystemConfig{}
+
+		// Use custom root if provided, otherwise default to project directory
+		if fsRootDir != "" {
+			fsConfig.RootDirectory = fsRootDir
+		} else {
+			// Default to current working directory (project directory)
+			pwd, err := os.Getwd()
+			if err != nil {
+				fsConfig.RootDirectory = "."
+			} else {
+				fsConfig.RootDirectory = pwd
+			}
+		}
+
+		if err := tools.RegisterFilesystemTools(mcpServer, fsConfig); err != nil {
+			return err
+		}
+
+		logger.InfoLog("Filesystem tools enabled with root: %s", fsConfig.RootDirectory)
+	}
+
+	// Create SSE server with the shared MCP server
+	sseServer := server.NewSSEServer(mcpServer)
+
+	mux := http.NewServeMux()
+
+	// Handle SSE endpoint with the shared server
+	mux.HandleFunc("/sse", customSSEHandler(sseServer, enableFsTools, fsRootDir))
+
+	// Handle message endpoint
+	mux.Handle("/message", sseServer.MessageHandler())
 
 	// Add a simple status endpoint
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
