@@ -201,7 +201,7 @@ func TestHandleReadFile(t *testing.T) {
 				},
 			}
 			
-			result, err := fs.handleReadFile(context.Background(), request)
+			result, err := fs.handleReadProjectFile(context.Background(), request)
 			
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
@@ -298,7 +298,7 @@ func TestHandleWriteFile(t *testing.T) {
 				},
 			}
 			
-			result, err := fs.handleWriteFile(context.Background(), request)
+			result, err := fs.handleWriteProjectFile(context.Background(), request)
 			
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
@@ -329,7 +329,7 @@ func TestHandleWriteFile(t *testing.T) {
 	}
 }
 
-func TestHandleListDirectory(t *testing.T) {
+func TestHandleListProjectFiles(t *testing.T) {
 	tempDir := t.TempDir()
 	
 	// Create some test files and directories
@@ -338,6 +338,7 @@ func TestHandleListDirectory(t *testing.T) {
 	
 	_ = os.WriteFile(testFile, []byte("test"), 0644)
 	_ = os.Mkdir(testDir, 0755)
+	_ = os.WriteFile(filepath.Join(testDir, "test2.txt"), []byte("test2"), 0644)
 	
 	fs := NewFilesystemServer(&FilesystemConfig{
 		RootDirectory: tempDir,
@@ -349,32 +350,23 @@ func TestHandleListDirectory(t *testing.T) {
 		expectError bool
 	}{
 		{
-			name: "list root directory",
+			name: "list all project files",
+			arguments: map[string]interface{}{},
+			expectError: false,
+		},
+		{
+			name: "list with glob pattern",
 			arguments: map[string]interface{}{
-				"path": tempDir,
+				"glob_pattern": "*.txt",
 			},
 			expectError: false,
 		},
 		{
-			name: "list subdirectory",
+			name: "list including ignored files",
 			arguments: map[string]interface{}{
-				"path": testDir,
+				"include_ignored": true,
 			},
 			expectError: false,
-		},
-		{
-			name: "nonexistent directory",
-			arguments: map[string]interface{}{
-				"path": filepath.Join(tempDir, "nonexistent"),
-			},
-			expectError: true,
-		},
-		{
-			name: "path outside root",
-			arguments: map[string]interface{}{
-				"path": "/etc",
-			},
-			expectError: true,
 		},
 	}
 	
@@ -386,7 +378,7 @@ func TestHandleListDirectory(t *testing.T) {
 				},
 			}
 			
-			result, err := fs.handleListDirectory(context.Background(), request)
+			result, err := fs.handleListProjectFiles(context.Background(), request)
 			
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
@@ -411,13 +403,19 @@ func TestHandleListDirectory(t *testing.T) {
 						t.Errorf("Expected content type 'text', got '%s'", textContent.Type)
 					}
 					
-					// For root directory listing, should contain our test files
-					if tt.arguments["path"] == tempDir {
+					// Check for expected files in project listing
+					if tt.name == "list all project files" {
 						if !strings.Contains(textContent.Text, "test.txt") {
-							t.Errorf("Expected directory listing to contain 'test.txt', got '%s'", textContent.Text)
+							t.Errorf("Expected file listing to contain 'test.txt', got '%s'", textContent.Text)
 						}
-						if !strings.Contains(textContent.Text, "testdir") {
-							t.Errorf("Expected directory listing to contain 'testdir', got '%s'", textContent.Text)
+						// test2.txt is in subdirectory, should be listed as testdir/test2.txt
+						if !strings.Contains(textContent.Text, "testdir/test2.txt") {
+							t.Errorf("Expected file listing to contain 'testdir/test2.txt', got '%s'", textContent.Text)
+						}
+					}
+					if tt.name == "list with glob pattern" && tt.arguments["glob_pattern"] == "*.txt" {
+						if !strings.Contains(textContent.Text, "test.txt") {
+							t.Errorf("Expected glob pattern result to contain 'test.txt', got '%s'", textContent.Text)
 						}
 					}
 				} else {
@@ -441,9 +439,7 @@ func TestCopyFileOrDir(t *testing.T) {
 	_ = os.Mkdir(testDir, 0755)
 	_ = os.WriteFile(filepath.Join(testDir, "file.txt"), []byte("dir content"), 0644)
 	
-	fs := NewFilesystemServer(&FilesystemConfig{
-		RootDirectory: tempDir,
-	})
+	// Test with simple copy function instead of removed copyFileOrDir
 	
 	tests := []struct {
 		name   string
@@ -464,7 +460,7 @@ func TestCopyFileOrDir(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := fs.copyFileOrDir(tt.source, tt.dest)
+			err := copyFileForTest(tt.source, tt.dest)
 			if err != nil {
 				t.Errorf("Expected no error, got %v", err)
 			}
@@ -475,5 +471,150 @@ func TestCopyFileOrDir(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGlobPatternFiltering(t *testing.T) {
+	tempDir := t.TempDir()
+	
+	// Create test files
+	files := []string{
+		"main.go",
+		"main_test.go",
+		"config.yaml",
+		"src/utils.go",
+		"src/utils_test.go",
+		"docs/guide.md",
+		"cmd/server/main.go",
+	}
+	
+	for _, file := range files {
+		fullPath := filepath.Join(tempDir, file)
+		_ = os.MkdirAll(filepath.Dir(fullPath), 0755)
+		_ = os.WriteFile(fullPath, []byte("test"), 0644)
+	}
+	
+	// Create .gitignore
+	gitignoreContent := "*_test.go"
+	_ = os.WriteFile(filepath.Join(tempDir, ".gitignore"), []byte(gitignoreContent), 0644)
+	
+	fs := NewFilesystemServer(&FilesystemConfig{
+		RootDirectory: tempDir,
+	})
+	
+	tests := []struct {
+		name           string
+		globPattern    string
+		includeIgnored bool
+		expectedFiles  []string
+	}{
+		{
+			name:           "all go files including ignored",
+			globPattern:    "**/*.go",
+			includeIgnored: true,
+			expectedFiles:  []string{"cmd/server/main.go", "main.go", "main_test.go", "src/utils.go", "src/utils_test.go"},
+		},
+		{
+			name:           "all go files excluding ignored",
+			globPattern:    "**/*.go",
+			includeIgnored: false,
+			expectedFiles:  []string{"cmd/server/main.go", "main.go", "src/utils.go"},
+		},
+		{
+			name:           "only root level go files",
+			globPattern:    "*.go",
+			includeIgnored: false,
+			expectedFiles:  []string{"main.go"},
+		},
+		{
+			name:           "cmd directory go files",
+			globPattern:    "cmd/**/*.go",
+			includeIgnored: false,
+			expectedFiles:  []string{"cmd/server/main.go"},
+		},
+		{
+			name:           "markdown files",
+			globPattern:    "**/*.md",
+			includeIgnored: false,
+			expectedFiles:  []string{"docs/guide.md"},
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := fs.ListProjectFiles(tt.globPattern, tt.includeIgnored)
+			if err != nil {
+				t.Fatalf("Unexpected error: %v", err)
+			}
+			
+			// Sort both slices for comparison
+			if len(result) != len(tt.expectedFiles) {
+				t.Errorf("Expected %d files, got %d. Expected: %v, Got: %v", 
+					len(tt.expectedFiles), len(result), tt.expectedFiles, result)
+				return
+			}
+			
+			// Check each expected file is present
+			resultMap := make(map[string]bool)
+			for _, file := range result {
+				resultMap[file] = true
+			}
+			
+			for _, expected := range tt.expectedFiles {
+				if !resultMap[expected] {
+					t.Errorf("Expected file %s not found in results: %v", expected, result)
+				}
+			}
+		})
+	}
+}
+
+// copyFileForTest is a simple helper for testing - copies functionality removed from main implementation
+func copyFileForTest(src, dst string) error {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	
+	if srcInfo.IsDir() {
+		return copyDirForTest(src, dst)
+	}
+	
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return err
+	}
+	
+	return os.WriteFile(dst, data, 0644)
+}
+
+func copyDirForTest(src, dst string) error {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	
+	if err := os.MkdirAll(dst, srcInfo.Mode()); err != nil {
+		return err
+	}
+	
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+	
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+		
+		if err := copyFileForTest(srcPath, dstPath); err != nil {
+			return err
+		}
+	}
+	
+	return nil
 }
 

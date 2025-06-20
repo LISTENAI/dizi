@@ -66,9 +66,9 @@ func main() {
 		host          = flag.String("host", "localhost", "Host for SSE transport")
 		portFlag      = flag.Int("port", 0, "Port for SSE transport (overrides config)")
 		enableFsTools = flag.Bool("fs-tools", false, "Enable filesystem tools")
-		fsRootDir     = flag.String("fs-root", "", "Root directory for filesystem tools")
-		workDir       = flag.String("workdir", "", "Working directory for the server")
-		help          = flag.Bool("help", false, "Show help information")
+		// fsRootDir     = flag.String("fs-root", "", "Root directory for filesystem tools")
+		workDir = flag.String("workdir", "", "Working directory for the server")
+		help    = flag.Bool("help", false, "Show help information")
 	)
 
 	flag.Parse()
@@ -111,17 +111,17 @@ func main() {
 		fsConfig := &tools.FilesystemConfig{}
 
 		// Use command line fs-root if provided, otherwise default to project directory
-		if *fsRootDir != "" {
-			fsConfig.RootDirectory = *fsRootDir
+		// if *fsRootDir != "" {
+		// 	fsConfig.RootDirectory = *fsRootDir
+		// } else {
+		// Default to current working directory (project directory)
+		pwd, err := os.Getwd()
+		if err != nil {
+			fsConfig.RootDirectory = "."
 		} else {
-			// Default to current working directory (project directory)
-			pwd, err := os.Getwd()
-			if err != nil {
-				fsConfig.RootDirectory = "."
-			} else {
-				fsConfig.RootDirectory = pwd
-			}
+			fsConfig.RootDirectory = pwd
 		}
+		// }
 
 		if err := tools.RegisterFilesystemTools(mcpServer, fsConfig); err != nil {
 			log.Fatalf("Failed to register filesystem tools: %v", err)
@@ -142,23 +142,23 @@ func main() {
 		}
 	case "sse":
 		logger.InfoLog("Starting %s v%s - %s with SSE transport", cfg.Name, cfg.Version, cfg.Description)
-		
+
 		// Register filesystem tools if enabled
 		if *enableFsTools {
 			fsConfig := &tools.FilesystemConfig{}
 
 			// Use command line fs-root if provided, otherwise default to project directory
-			if *fsRootDir != "" {
-				fsConfig.RootDirectory = *fsRootDir
+			// if *fsRootDir != "" {
+			// 	fsConfig.RootDirectory = *fsRootDir
+			// } else {
+			// Default to current working directory (project directory)
+			pwd, err := os.Getwd()
+			if err != nil {
+				fsConfig.RootDirectory = "."
 			} else {
-				// Default to current working directory (project directory)
-				pwd, err := os.Getwd()
-				if err != nil {
-					fsConfig.RootDirectory = "."
-				} else {
-					fsConfig.RootDirectory = pwd
-				}
+				fsConfig.RootDirectory = pwd
 			}
+			// }
 
 			if err := tools.RegisterFilesystemTools(mcpServer, fsConfig); err != nil {
 				log.Fatalf("Failed to register filesystem tools: %v", err)
@@ -166,7 +166,7 @@ func main() {
 
 			logger.InfoLog("Filesystem tools enabled with root: %s", fsConfig.RootDirectory)
 		}
-		
+
 		// Create and start SSE server
 		sseServer := mcpserver.NewSSEServer(mcpServer)
 		addr := *host + ":" + strconv.Itoa(port)
@@ -386,7 +386,7 @@ func luaCommand() {
 	}
 
 	scriptFile := os.Args[2]
-	
+
 	// Check if file exists
 	if _, err := os.Stat(scriptFile); os.IsNotExist(err) {
 		fmt.Fprintf(os.Stderr, "Error: Lua script file '%s' not found\n", scriptFile)
@@ -606,7 +606,7 @@ func setupLuaHelpers(L *lua.LState) {
 }
 
 // luaCompleter creates an auto-completer for Lua keywords and variables
-func luaCompleter(L *lua.LState) readline.AutoCompleter {
+func luaCompleter(_ *lua.LState) readline.AutoCompleter {
 	return readline.NewPrefixCompleter(
 		// REPL commands
 		readline.PcItem(":help"),
@@ -617,7 +617,7 @@ func luaCompleter(L *lua.LState) readline.AutoCompleter {
 		readline.PcItem(":version"),
 		readline.PcItem(":vars"),
 		readline.PcItem(":history"),
-		
+
 		// Lua keywords
 		readline.PcItem("and"),
 		readline.PcItem("break"),
@@ -640,7 +640,7 @@ func luaCompleter(L *lua.LState) readline.AutoCompleter {
 		readline.PcItem("true"),
 		readline.PcItem("until"),
 		readline.PcItem("while"),
-		
+
 		// Common functions
 		readline.PcItem("print"),
 		readline.PcItem("type"),
@@ -654,7 +654,7 @@ func luaCompleter(L *lua.LState) readline.AutoCompleter {
 		readline.PcItem("math"),
 		readline.PcItem("io"),
 		readline.PcItem("os"),
-		
+
 		// Helper functions
 		readline.PcItem("help()"),
 		readline.PcItem("vars()"),

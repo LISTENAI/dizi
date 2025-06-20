@@ -60,7 +60,7 @@ func RegisterTools(mcpServer *server.MCPServer, tools []config.ToolConfig) error
 
 // createBuiltinHandler creates a handler for builtin tools
 func createBuiltinHandler(tool config.ToolConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		switch tool.Name {
 		case "echo":
 			return handleEcho(request)
@@ -74,7 +74,7 @@ func createBuiltinHandler(tool config.ToolConfig) func(ctx context.Context, requ
 
 // createCommandHandler creates a handler for command tools
 func createCommandHandler(tool config.ToolConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		// Extract arguments
 		arguments, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
@@ -100,7 +100,7 @@ func createCommandHandler(tool config.ToolConfig) func(ctx context.Context, requ
 
 // createScriptHandler creates a handler for script tools
 func createScriptHandler(tool config.ToolConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		// Extract arguments
 		arguments, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
@@ -139,7 +139,7 @@ func handleEcho(request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 
 // createLuaHandler creates a handler for lua tools
 func createLuaHandler(tool config.ToolConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		// Extract arguments
 		arguments, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
