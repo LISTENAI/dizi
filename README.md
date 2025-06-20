@@ -164,7 +164,7 @@ dizi lua dizi_bin/hello.lua
 |----------|------|
 | 基本连接 | `http://localhost:8081/sse` |
 | 启用文件系统工具 | `http://localhost:8081/sse?include_fs_tools=true` |
-| 自定义根目录 | `http://localhost:8081/sse?include_fs_tools=true&fs_root=/path` |
+| 自定义根目录（不建议使用该参数） | `http://localhost:8081/sse?include_fs_tools=true&fs_root=/path` |
 
 ## 📁 文件系统工具
 
@@ -422,7 +422,7 @@ lua:5> factorial(5)
 | 选项 | 类型 | 说明 | 默认值 |
 |------|------|------|--------|
 | `-fs-tools` | bool | 启用文件系统工具 | `false` |
-| `-fs-root` | string | 文件系统工具根目录 | `.` |
+| `-fs-root` | string | 文件系统工具根目录，__除非你知道你在干嘛__，不然不要用 | `.` |
 
 ### 其他选项
 
