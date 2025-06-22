@@ -6,10 +6,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 
 	"dizi/internal/config"
+	"dizi/internal/shell"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -87,8 +87,8 @@ func createCommandHandler(tool config.ToolConfig) func(ctx context.Context, requ
 			processedArgs[i] = replacePlaceholders(arg, arguments)
 		}
 
-		// Execute command
-		cmd := exec.Command(tool.Command, processedArgs...)
+		// Execute command with shell environment
+		cmd := shell.CreateShellCommand(tool.Command, processedArgs...)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Command failed: %v\nOutput: %s", err, string(output))), nil
@@ -110,8 +110,8 @@ func createScriptHandler(tool config.ToolConfig) func(ctx context.Context, reque
 		// Replace placeholders in script
 		processedScript := replacePlaceholders(tool.Script, arguments)
 
-		// Execute script with shell
-		cmd := exec.Command("sh", "-c", processedScript)
+		// Execute script with shell environment
+		cmd := shell.CreateShellScriptCommand(processedScript)
 		output, err := cmd.CombinedOutput()
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Script failed: %v\nOutput: %s", err, string(output))), nil
