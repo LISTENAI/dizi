@@ -139,11 +139,22 @@ func getCurrentShell() string {
 	pathShells := []string{"zsh", "bash", "fish", "sh"}
 	for _, shell := range pathShells {
 		if path, err := exec.LookPath(shell); err == nil {
-			return path
+			// Verify this is actually a shell by checking if it supports -c flag
+			if isValidShell(path) {
+				return path
+			}
 		}
 	}
 	
 	return "/bin/sh" // Ultimate fallback
+}
+
+// isValidShell checks if a path points to a valid shell that supports the -c flag
+func isValidShell(shellPath string) bool {
+	// Try to execute a simple command with -c flag
+	cmd := exec.Command(shellPath, "-c", "echo test")
+	err := cmd.Run()
+	return err == nil
 }
 
 // getParentShell tries to determine the parent shell process
@@ -163,7 +174,10 @@ func getParentShell() string {
 	
 	// Try to find the full path
 	if path, err := exec.LookPath(parentComm); err == nil {
-		return path
+		// Verify this is actually a shell
+		if isValidShell(path) {
+			return path
+		}
 	}
 	
 	return parentComm
