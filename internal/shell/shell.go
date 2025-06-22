@@ -110,7 +110,9 @@ func GetShellConfigFiles() []string {
 func getCurrentShell() string {
 	// Method 1: Check SHELL environment variable
 	if shell := os.Getenv("SHELL"); shell != "" {
-		return shell
+		if isValidShell(shell) {
+			return shell
+		}
 	}
 	
 	// Method 2: Check parent process (works on Unix systems)
@@ -131,7 +133,9 @@ func getCurrentShell() string {
 	
 	for _, shell := range commonShells {
 		if _, err := os.Stat(shell); err == nil {
-			return shell
+			if isValidShell(shell) {
+				return shell
+			}
 		}
 	}
 	
@@ -146,7 +150,22 @@ func getCurrentShell() string {
 		}
 	}
 	
-	return "/bin/sh" // Ultimate fallback
+	// Ultimate fallback - verify it works
+	if isValidShell("/bin/sh") {
+		return "/bin/sh"
+	}
+	
+	// If even /bin/sh doesn't work, try some other common paths
+	fallbacks := []string{"/usr/bin/bash", "/bin/bash", "/usr/bin/sh"}
+	for _, shell := range fallbacks {
+		if _, err := os.Stat(shell); err == nil && isValidShell(shell) {
+			return shell
+		}
+	}
+	
+	// Last resort - return /bin/sh even if validation fails
+	// This allows the code to continue running, though it may fail later
+	return "/bin/sh"
 }
 
 // isValidShell checks if a path points to a valid shell that supports the -c flag
@@ -180,7 +199,8 @@ func getParentShell() string {
 		}
 	}
 	
-	return parentComm
+	// Don't return parentComm if it's not a valid shell
+	return ""
 }
 
 // CreateShellCommand creates a command that runs in the user's configured shell environment
