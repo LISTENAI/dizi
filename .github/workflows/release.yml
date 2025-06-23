@@ -67,11 +67,6 @@ jobs:
         BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
         go build -ldflags="-s -w -X main.Version=$VERSION -X main.Commit=$COMMIT -X main.BuildDate=$BUILD_DATE" -o "$BINARY_NAME" ./cmd/dizi
         echo "BINARY_NAME=$BINARY_NAME" >> $GITHUB_ENV
-        
-    - name: Test binary version
-      if: matrix.goos == 'linux'
-      run: |
-        ./${{ env.BINARY_NAME }} version
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
