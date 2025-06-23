@@ -41,11 +41,13 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 获取完整的git历史用于版本信息
 
     - name: Set up Go
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.21'
+        go-version: '1.24'
 
     - name: Get dependencies
       run: go mod download
@@ -60,8 +62,15 @@ jobs:
         CGO_ENABLED: 0
       run: |
         BINARY_NAME="dizi-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}"
-        go build -ldflags="-s -w -X main.version=${GITHUB_REF#refs/tags/}" -o "$BINARY_NAME" ./cmd/dizi
+        VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+        COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+        BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        go build -ldflags="-s -w -X main.Version=$VERSION -X main.Commit=$COMMIT -X main.BuildDate=$BUILD_DATE" -o "$BINARY_NAME" ./cmd/dizi
         echo "BINARY_NAME=$BINARY_NAME" >> $GITHUB_ENV
+        
+    - name: Test binary version
+      run: |
+        ./${{ env.BINARY_NAME }} version
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -78,6 +87,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # 获取完整的git历史用于版本信息
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4
