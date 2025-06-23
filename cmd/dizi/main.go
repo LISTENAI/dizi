@@ -23,6 +23,19 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+var (
+	// Version is the current version of dizi, set at build time
+	Version = "dev"
+	// Commit is the git commit hash, set at build time
+	Commit = "unknown"
+	// BuildDate is the build date, set at build time
+	BuildDate = "unknown"
+	// AppName is the application name
+	AppName = "dizi"
+	// AppDescription describes what dizi does
+	AppDescription = "A configurable MCP (Model Context Protocol) server with Lua scripting support"
+)
+
 //go:embed dizi.example.yml
 var exampleConfig string
 
@@ -56,6 +69,9 @@ func main() {
 				return
 			case "repl":
 				replCommand()
+				return
+			case "version":
+				versionCommand()
 				return
 			}
 		}
@@ -196,6 +212,8 @@ func showHelp(cfg *config.Config) {
 	fmt.Println("        Run a Lua script file")
 	fmt.Println("  repl")
 	fmt.Println("        Start interactive Lua REPL")
+	fmt.Println("  version")
+	fmt.Println("        Show version information")
 	fmt.Println("")
 	fmt.Println("Flags:")
 	fmt.Println("  -transport string")
@@ -232,6 +250,18 @@ func showHelp(cfg *config.Config) {
 	fmt.Println("Filesystem Tools (when enabled):")
 	fmt.Println("  read_file, write_file, list_directory, create_directory,")
 	fmt.Println("  delete_file, copy_file, move_file, get_file_info, search_files")
+}
+
+// versionCommand displays version information
+func versionCommand() {
+	fmt.Printf("%s %s\n", AppName, Version)
+	if Commit != "unknown" {
+		fmt.Printf("Commit: %s\n", Commit)
+	}
+	if BuildDate != "unknown" {
+		fmt.Printf("Built: %s\n", BuildDate)
+	}
+	fmt.Printf("%s\n", AppDescription)
 }
 
 // initCommand creates a complete dizi project with configuration and Lua scripts

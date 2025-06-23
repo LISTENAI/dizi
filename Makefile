@@ -3,12 +3,13 @@
 # 变量定义
 APP_NAME = dizi
 CMD_PATH = ./cmd/dizi
-VERSION = $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v1.0.0")
-BUILD_TIME = $(shell date +%Y-%m-%d_%H:%M:%S)
+VERSION = $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT = $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE = $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 GO_VERSION = $(shell go version | cut -d' ' -f3)
 
 # Go 构建标志
-LDFLAGS = -ldflags="-s -w -X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME)"
+LDFLAGS = -ldflags="-s -w -X main.Version=$(VERSION) -X main.Commit=$(COMMIT) -X main.BuildDate=$(BUILD_DATE)"
 
 # 默认目标
 .PHONY: all
