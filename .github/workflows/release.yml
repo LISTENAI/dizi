@@ -69,6 +69,7 @@ jobs:
         echo "BINARY_NAME=$BINARY_NAME" >> $GITHUB_ENV
         
     - name: Test binary version
+      if: matrix.goos == 'linux'
       run: |
         ./${{ env.BINARY_NAME }} version
 
