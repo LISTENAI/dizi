@@ -5,6 +5,7 @@ package tools
 import (
 	"bufio"
 	"context"
+	"dizi/internal/gitls"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -25,10 +26,10 @@ type FilesystemConfig struct {
 
 // FilesystemServer wraps the filesystem functionality
 type FilesystemServer struct {
-	config          *FilesystemConfig
-	readTimestamps  map[string]int64 // Track file modification times when read
-	gitIgnoreCache  map[string][]glob.Glob // Cache parsed .gitignore patterns
-	maxFileSize     int64 // Maximum file size for reading (256KB)
+	config         *FilesystemConfig
+	readTimestamps map[string]int64       // Track file modification times when read
+	gitIgnoreCache map[string][]glob.Glob // Cache parsed .gitignore patterns
+	maxFileSize    int64                  // Maximum file size for reading (256KB)
 }
 
 // NewFilesystemServer creates a new filesystem server with the given configuration
@@ -225,17 +226,16 @@ func (fs *FilesystemServer) handleListProjectFiles(_ context.Context, request mc
 		return mcp.NewToolResultError("Invalid arguments format"), nil
 	}
 
-	globPattern := ""
-	if pattern, exists := arguments["glob_pattern"].(string); exists {
-		globPattern = pattern
+	var opts []gitls.ListFilesOption
+	opts = append(opts, gitls.WithDirectory(fs.config.RootDirectory))
+	if pattern, ok := arguments["glob_pattern"].(string); ok && pattern != "" {
+		opts = append(opts, gitls.WithGlob(pattern))
+	}
+	if ignored, ok := arguments["include_ignored"].(bool); ok && ignored {
+		opts = append(opts, gitls.WithIncludeIgnored())
 	}
 
-	includeIgnored := false
-	if ignored, exists := arguments["include_ignored"].(bool); exists {
-		includeIgnored = ignored
-	}
-
-	files, err := fs.ListProjectFiles(globPattern, includeIgnored)
+	files, err := gitls.ListFiles(opts...)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to list files: %v", err)), nil
 	}
@@ -368,7 +368,6 @@ func (fs *FilesystemServer) handleGrepProjectFiles(_ context.Context, request mc
 	return mcp.NewToolResultText(string(jsonResult)), nil
 }
 
-
 // Core implementation functions
 
 // ListProjectFiles lists all files in the project, optionally filtering by glob pattern
@@ -468,12 +467,12 @@ func (fs *FilesystemServer) shouldIncludeFile(relPath, globPattern string, globM
 // matchesGlobPattern checks if a file path matches the glob pattern
 func (fs *FilesystemServer) matchesGlobPattern(relPath, globPattern string, globMatcher, altGlobMatcher glob.Glob) bool {
 	matched := globMatcher.Match(relPath)
-	
+
 	// For ** patterns, also try matching against root-level pattern
 	if !matched && altGlobMatcher != nil {
 		matched = altGlobMatcher.Match(relPath)
 	}
-	
+
 	// Special handling for patterns without ** or / that should only match root level
 	if matched && !strings.Contains(globPattern, "**/") && !strings.Contains(globPattern, "/") {
 		// If pattern doesn't contain path separators, it should only match root level files
@@ -481,7 +480,7 @@ func (fs *FilesystemServer) matchesGlobPattern(relPath, globPattern string, glob
 			matched = false
 		}
 	}
-	
+
 	return matched
 }
 
@@ -507,7 +506,7 @@ func (fs *FilesystemServer) loadGitignorePatterns() ([]glob.Glob, error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		
+
 		// Skip empty lines and comments
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
@@ -533,7 +532,7 @@ func (fs *FilesystemServer) gitignoreToGlob(pattern string) string {
 	if strings.HasPrefix(pattern, "!") {
 		return ""
 	}
-	
+
 	// Handle patterns starting with / (anchor to root)
 	if strings.HasPrefix(pattern, "/") {
 		pattern = pattern[1:]
@@ -542,17 +541,17 @@ func (fs *FilesystemServer) gitignoreToGlob(pattern string) string {
 		}
 		return pattern
 	}
-	
+
 	// Handle directory patterns
 	if strings.HasSuffix(pattern, "/") {
 		return "{" + pattern + "**," + "**/" + pattern + "**}"
 	}
-	
+
 	// Handle patterns with ** already
 	if strings.Contains(pattern, "**") {
 		return pattern
 	}
-	
+
 	// Default case - match anywhere in the tree (including root)
 	return "{" + pattern + "," + "**/" + pattern + "}"
 }
@@ -595,16 +594,16 @@ func (fs *FilesystemServer) readProjectFile(path string, lineOffset, count int) 
 	contentStr := string(content)
 	if lineOffset > 0 || count > 0 {
 		lines := strings.Split(contentStr, "\n")
-		
+
 		if lineOffset >= len(lines) {
 			return "", nil
 		}
-		
+
 		endIndex := len(lines)
 		if count > 0 && lineOffset+count < len(lines) {
 			endIndex = lineOffset + count
 		}
-		
+
 		contentStr = strings.Join(lines[lineOffset:endIndex], "\n")
 	}
 
@@ -721,11 +720,11 @@ func (fs *FilesystemServer) grepProjectFiles(pattern, globPattern string, caseSe
 	}
 
 	searchCtx := &grepSearchContext{
-		pattern:       pattern,
-		caseSensitive: caseSensitive,
-		maxResults:    maxResults,
-		globMatcher:   nil,
-		regex:         nil,
+		pattern:        pattern,
+		caseSensitive:  caseSensitive,
+		maxResults:     maxResults,
+		globMatcher:    nil,
+		regex:          nil,
 		ignorePatterns: nil,
 	}
 
@@ -827,7 +826,7 @@ func (fs *FilesystemServer) searchInFile(path, relPath string, ctx *grepSearchCo
 
 	var results []GrepResult
 	lines := strings.Split(string(content), "\n")
-	
+
 	for lineNum, line := range lines {
 		if len(results) >= ctx.maxResults {
 			break
