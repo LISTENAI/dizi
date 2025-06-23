@@ -391,10 +391,12 @@ lua:5> factorial(5)
 - **输入获取**：使用全局变量 `args` 获取外部输入
 - **结果返回**：使用全局变量 `result` 返回结果
 - **调试输出**：使用 `print()` 函数打印调试信息
+- **可以使用额外的库**：支持系统检测，http client等功能，具体可以看仓库 `dizi_bin/gopher_lua_libs_simple.lua`。也可以看参考资源的拓展库
 
 **参考资源：**
 - [Gopher-Lua 文档](https://github.com/yuin/gopher-lua)
 - [Lua 5.1 手册](https://www.lua.org/manual/5.1/)
+- [拓展库](https://github.com/vadv/gopher-lua-libs)
 
 ## 💻 命令行选项
 

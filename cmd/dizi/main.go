@@ -19,6 +19,7 @@ import (
 
 	"github.com/chzyer/readline"
 	mcpserver "github.com/mark3labs/mcp-go/server"
+	libs "github.com/vadv/gopher-lua-libs"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -396,6 +397,9 @@ func luaCommand() {
 	// Create Lua state
 	L := lua.NewState()
 	defer L.Close()
+	
+	// Load gopher-lua-libs
+	libs.Preload(L)
 
 	// Capture print output by redirecting Lua's print function
 	L.SetGlobal("print", L.NewFunction(func(L *lua.LState) int {
@@ -433,6 +437,9 @@ func replCommand() {
 	// Create Lua state
 	L := lua.NewState()
 	defer L.Close()
+	
+	// Load gopher-lua-libs
+	libs.Preload(L)
 
 	// Setup readline with custom completer
 	rl, err := readline.NewEx(&readline.Config{
@@ -511,6 +518,10 @@ func replCommand() {
 		case ":reset":
 			L.Close()
 			L = lua.NewState()
+			
+			// Load gopher-lua-libs
+			libs.Preload(L)
+			
 			setupLuaHelpers(L)
 			// Re-setup print function
 			L.SetGlobal("print", L.NewFunction(func(L *lua.LState) int {
@@ -559,6 +570,7 @@ func executeLuaREPL(L *lua.LState, code string) string {
 
 	// Try as expression first (for immediate results)
 	if !strings.Contains(code, ";") && !strings.Contains(code, "\n") &&
+		!strings.Contains(code, "=") && // Don't treat assignments as expressions
 		!strings.HasPrefix(strings.TrimSpace(code), "function") &&
 		!strings.HasPrefix(strings.TrimSpace(code), "local") &&
 		!strings.HasPrefix(strings.TrimSpace(code), "if") &&

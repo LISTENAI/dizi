@@ -13,6 +13,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	libs "github.com/vadv/gopher-lua-libs"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -149,6 +150,9 @@ func createLuaHandler(tool config.ToolConfig) func(ctx context.Context, request 
 		// Create Lua state
 		L := lua.NewState()
 		defer L.Close()
+		
+		// Load gopher-lua-libs
+		libs.Preload(L)
 
 		// Set arguments as global variables in Lua
 		for key, value := range arguments {
@@ -195,6 +199,9 @@ func handleLuaEval(request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Create Lua state
 	L := lua.NewState()
 	defer L.Close()
+	
+	// Load gopher-lua-libs
+	libs.Preload(L)
 
 	// Capture print output
 	var output strings.Builder
@@ -268,6 +275,9 @@ func handleLuaEval(request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			// Create a new Lua state to avoid interfering with the main one
 			tempL := lua.NewState()
 			defer tempL.Close()
+			
+			// Load gopher-lua-libs for the temporary state
+			libs.Preload(tempL)
 			
 			// Copy necessary globals from main state
 			if err := tempL.DoString(code); err != nil {
